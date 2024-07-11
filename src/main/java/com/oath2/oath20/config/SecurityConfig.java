@@ -110,8 +110,7 @@ public class SecurityConfig {
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .addLogoutHandler(logoutHandlerService)
-                        .logoutSuccessHandler(((_, _, _) -> SecurityContextHolder.clearContext()))
-                )
+                        .logoutSuccessHandler(((request, response, authentication) -> SecurityContextHolder.clearContext()))                )
                 .exceptionHandling(ex -> {
                     ex.authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint());
                     ex.accessDeniedHandler(new BearerTokenAccessDeniedHandler());
@@ -121,16 +120,14 @@ public class SecurityConfig {
 
     @Order(5)
     @Bean
-    public SecurityFilterChain registerSecurityFilterChain(HttpSecurity httpSecurity) throws Exception{
+    public SecurityFilterChain publicEndpointsSecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                .securityMatcher(new AntPathRequestMatcher("/sign-up/**"))
+                .securityMatcher("/sign-up/**","/verify-otp/**","/resend-otp/**")
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth ->
-                        auth.anyRequest().permitAll())
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();
     }
-
 
     @Bean
     PasswordEncoder passwordEncoder(){

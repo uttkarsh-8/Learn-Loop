@@ -32,6 +32,12 @@ public class UserInfoEntity {
     @Column(nullable = false, name = "ROLES")
     private String roles;
 
+    @Column(name = "ENABLED", nullable = false)
+    private boolean enabled = false;
+
+    @Column(name = "FULL_NAME", nullable = false)
+    private String fullName;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<RefreshTokenEntity> refreshTokens;
 

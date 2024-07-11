@@ -62,7 +62,7 @@ public class AuthService {
 
         response.addCookie(refreshTokenCookie);
 
-    }
+    }               
 
     private void saveUserRefreshToken(UserInfoEntity userInfoEntity, String refreshToken) {
         var refreshTokenEntity = RefreshTokenEntity.builder()
@@ -112,6 +112,13 @@ public class AuthService {
                 .toArray(GrantedAuthority[]::new);
 
         return new UsernamePasswordAuthenticationToken(username, password, Arrays.asList(authorities));
+    }
+
+    public void enableUser(String email) {
+        UserInfoEntity user = userInfoRepository.findByEmailId(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        user.setEnabled(true);
+        userInfoRepository.save(user);
     }
 
     public AuthResponseDto registerUser(UserRegistrationDto userRegistrationDto,HttpServletResponse httpServletResponse) {

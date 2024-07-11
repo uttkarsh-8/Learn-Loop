@@ -8,9 +8,10 @@ public record UserRegistrationDto (
         @NotEmpty(message = "User Name must not be empty")
         String userName,
 
+        @NotEmpty(message = "Mobile number must not be empty")
         String userMobileNo,
 
-        @NotEmpty(message = "User email must not be empty") //Neither null nor 0 size
+        @NotEmpty(message = "User email must not be empty")
         @Email(message = "Invalid email format")
         String userEmail,
 

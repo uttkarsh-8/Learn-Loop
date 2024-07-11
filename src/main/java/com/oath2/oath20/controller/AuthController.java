@@ -5,9 +5,9 @@ import com.oath2.oath20.dto.AuthResponseDto;
 import com.oath2.oath20.dto.UserRegistrationDto;
 import com.oath2.oath20.dto.UserSignInDto;
 import com.oath2.oath20.entity.UserInfoEntity;
-import com.oath2.oath20.repository.UserInfoRepository;
 import com.oath2.oath20.service.AuthService;
-import jakarta.servlet.http.HttpServletRequest;
+import com.oath2.oath20.service.OtpService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,14 +20,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -38,12 +33,7 @@ public class AuthController {
     private final AuthService authService;
     private final PasswordEncoder passwordEncoder;
     private final UserInfoManagerConfig userInfoManagerConfig;
-
-//    @PostMapping("sign-in")
-//    public ResponseEntity<?> authenticateUser(Authentication authentication, HttpServletResponse response){
-//
-//        return ResponseEntity.ok(authService.getJwtTokensAfterAuthentication(authentication, response));
-//    }
+    private final OtpService otpService;
 
     @PostMapping("/sign-in")
     public ResponseEntity<?> authenticateUser(@RequestBody UserSignInDto signInRequest, HttpServletResponse response) {
@@ -55,6 +45,11 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
         }
 
+        // Check if the user is enabled (has verified their email)
+        if (!((UserInfoEntity) userDetails).isEnabled()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Account not verified. Please verify your email.");
+        }
+
         // Create authentication token
         Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails.getUsername(), null, userDetails.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -64,25 +59,42 @@ public class AuthController {
     }
 
     @PostMapping("/sign-up")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody UserRegistrationDto userRegistrationDto, BindingResult bindingResult, HttpServletResponse httpServletResponse){
-
+    @RateLimiter(name = "default")
+    public ResponseEntity<?> registerUser(@Valid @RequestBody UserRegistrationDto userRegistrationDto, BindingResult bindingResult, HttpServletResponse httpServletResponse) {
         if (bindingResult.hasErrors()) {
-
             List<String> errorMessage = bindingResult.getAllErrors().stream()
                     .map(DefaultMessageSourceResolvable::getDefaultMessage)
                     .toList();
-
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage);
         }
 
-        return ResponseEntity.ok(authService.registerUser(userRegistrationDto,httpServletResponse));
+        AuthResponseDto response = authService.registerUser(userRegistrationDto, httpServletResponse);
+        otpService.generateAndSendOtp(userRegistrationDto.userEmail());
+        return ResponseEntity.ok("User registered. Please check your email for OTP to verify your account.");
+    }
+
+    @PostMapping("/verify-otp")
+    @RateLimiter(name = "default")
+    public ResponseEntity<?> verifyOtp(@RequestParam String email, @RequestParam String otp) {
+        boolean isValid = otpService.verifyOtp(email, otp);
+        if (isValid) {
+            authService.enableUser(email);
+            return ResponseEntity.ok("Email verified successfully. You can now sign in.");
+        } else {
+            return ResponseEntity.badRequest().body("Invalid OTP.");
+        }
+    }
+
+    @PostMapping("/resend-otp")
+    @RateLimiter(name = "default")
+    public ResponseEntity<?> resendOtp(@RequestParam String email) {
+        otpService.generateAndSendOtp(email);
+        return ResponseEntity.ok("New OTP sent to your email.");
     }
 
     @PreAuthorize("hasAuthority('SCOPE_REFRESH_TOKEN')")
     @PostMapping("/refresh-token")
-    public ResponseEntity<?> getAccessToken(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader){
-
+    public ResponseEntity<?> getAccessToken(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
         return ResponseEntity.ok(authService.getAccessTokenUsingRefreshToken(authorizationHeader));
     }
-
 }
