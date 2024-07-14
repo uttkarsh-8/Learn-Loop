@@ -147,5 +147,4 @@ public class SecurityConfig {
 
         return new NimbusJwtEncoder(jwkSource);
     }
-
 }
