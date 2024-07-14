@@ -46,7 +46,7 @@ public class AuthController {
         }
 
         // Check if the user is enabled (has verified their email)
-        if (!((UserInfoEntity) userDetails).isEnabled()) {
+        if (!userDetails.isEnabled()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Account not verified. Please verify your email.");
         }
 
