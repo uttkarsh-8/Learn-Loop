@@ -79,7 +79,24 @@ public class SecurityConfig {
                 .build();
     }
 
-    @Order(3)
+    @Order(3) // Adjust the order as needed
+    @Bean
+    public SecurityFilterChain profileSecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        return httpSecurity
+                .securityMatcher("/api/profile/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(withDefaults()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(new JwtAccessTokenFilter(rsaKeyRecord, jwtTokenUtils), UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(ex -> {
+                    ex.authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint());
+                    ex.accessDeniedHandler(new BearerTokenAccessDeniedHandler());
+                })
+                .httpBasic(withDefaults())
+                .build();
+    }
+
+    @Order(4)
     @Bean
     public SecurityFilterChain refreshTokenSecurityFilterChain(HttpSecurity httpSecurity) throws Exception{
         return httpSecurity
@@ -97,7 +114,7 @@ public class SecurityConfig {
                 .build();
     }
 
-    @Order(4)
+    @Order(5)
     @Bean
     public SecurityFilterChain logoutSecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
@@ -118,7 +135,7 @@ public class SecurityConfig {
                 .build();
     }
 
-    @Order(5)
+    @Order(6)
     @Bean
     public SecurityFilterChain publicEndpointsSecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity

@@ -93,7 +93,7 @@ public class ProfileService {
     private void updateUserFields(UserInfoEntity user, ProfileDto profileDto) {
         user.setFullName(profileDto.fullName());
         user.setBio(profileDto.bio());
-        user.setUserRole(profileDto.currentRole());
+        user.setUserRole(profileDto.userRole());
         user.setCompany(profileDto.company());
         user.setYearsOfExperience(profileDto.yearsOfExperience());
     }

@@ -5,7 +5,7 @@ public record ProfileDto(
         String fullName,
         String profilePictureUrl,
         String bio,
-        String currentRole,
+        String userRole,
         String company,
         Integer yearsOfExperience
 ) {
